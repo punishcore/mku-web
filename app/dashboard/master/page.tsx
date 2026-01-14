@@ -2,12 +2,13 @@
 
 import { useAuth } from '@/app/lib/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { Plus, Download } from 'lucide-react';
 import { Button, Input, Spinner, Badge } from '@/app/components';
 import { Modal, Toast } from '@/app/components/molecules';
 import { PageLayout, DataTable } from '@/app/components';
 import { Barang } from '@/app/lib/types';
+import { storage } from '@/app/lib/storage';
 
 export default function MasterBarangPage() {
   const { user, isLoading } = useAuth();
@@ -18,77 +19,67 @@ export default function MasterBarangPage() {
   const [message, setMessage] = useState({ text: '', type: '' as 'success' | 'error' | '' });
   const [showForm, setShowForm] = useState(false);
 
+  const loadBarang = useCallback(() => setBarang(storage.getBarang()), []);
+
   useEffect(() => {
     if (!isLoading && !user) router.push('/login');
   }, [user, isLoading, router]);
 
-  useEffect(() => { fetchBarang(); }, []);
+  useEffect(() => { loadBarang(); }, [loadBarang]);
 
-  const fetchBarang = async () => {
-    const res = await fetch('/api/barang');
-    setBarang(await res.json());
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (form.kode.length < 3 || form.nama.length < 2) {
       setMessage({ text: 'Kode minimal 3 karakter, nama minimal 2 karakter', type: 'error' });
       return;
     }
-    const res = await fetch('/api/barang', {
-      method: editMode ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
-    const data = await res.json();
-    if (data.success) {
-      setMessage({ text: editMode ? 'Barang berhasil diupdate' : 'Barang berhasil ditambah', type: 'success' });
-      resetForm();
-      fetchBarang();
+    const list = storage.getBarang();
+    if (editMode) {
+      const idx = list.findIndex(b => b.kode === form.kode);
+      if (idx !== -1) list[idx] = form;
+      setMessage({ text: 'Barang berhasil diupdate', type: 'success' });
     } else {
-      setMessage({ text: data.message, type: 'error' });
+      if (list.some(b => b.kode === form.kode)) {
+        setMessage({ text: 'Kode barang sudah ada', type: 'error' });
+        return;
+      }
+      list.push(form);
+      setMessage({ text: 'Barang berhasil ditambah', type: 'success' });
     }
+    storage.setBarang(list);
+    resetForm();
+    loadBarang();
   };
 
-  const handleEdit = (b: Barang) => {
-    setForm(b);
-    setEditMode(true);
-    setShowForm(true);
-  };
+  const handleEdit = (b: Barang) => { setForm(b); setEditMode(true); setShowForm(true); };
 
-  const handleDelete = async (b: Barang) => {
+  const handleDelete = (b: Barang) => {
     if (!confirm('Hapus barang ini?')) return;
-    await fetch('/api/barang', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kode: b.kode }) });
+    const list = storage.getBarang().filter(x => x.kode !== b.kode);
+    storage.setBarang(list);
     setMessage({ text: 'Barang berhasil dihapus', type: 'success' });
-    fetchBarang();
+    loadBarang();
   };
 
-  const resetForm = () => {
-    setForm({ kode: '', nama: '', harga: 0, stok: 0 });
-    setEditMode(false);
-    setShowForm(false);
-  };
+  const resetForm = () => { setForm({ kode: '', nama: '', harga: 0, stok: 0 }); setEditMode(false); setShowForm(false); };
 
   if (isLoading || !user) return <div className="min-h-screen flex items-center justify-center"><Spinner /></div>;
 
   const columns = [
-    { key: 'kode' as const, header: 'Kode', render: (b: Barang) => <span className="font-mono text-sm bg-slate-100 px-2 py-1 rounded">{b.kode}</span> },
-    { key: 'nama' as const, header: 'Nama Barang', render: (b: Barang) => <span className="font-medium text-slate-900">{b.nama}</span> },
-    { key: 'harga' as const, header: 'Harga', align: 'right' as const, render: (b: Barang) => `Rp ${b.harga.toLocaleString('id-ID')}` },
+    { key: 'kode' as const, header: 'Kode', render: (b: Barang) => <span className="font-mono text-xs lg:text-sm bg-slate-100 px-1.5 lg:px-2 py-0.5 lg:py-1 rounded">{b.kode}</span> },
+    { key: 'nama' as const, header: 'Nama', render: (b: Barang) => <span className="font-medium text-slate-900 text-sm lg:text-base">{b.nama}</span> },
+    { key: 'harga' as const, header: 'Harga', align: 'right' as const, render: (b: Barang) => <span className="text-xs lg:text-sm">Rp {b.harga.toLocaleString('id-ID')}</span> },
     { key: 'stok' as const, header: 'Stok', align: 'right' as const, render: (b: Barang) => <Badge variant={b.stok < 10 ? 'danger' : b.stok < 50 ? 'warning' : 'success'}>{b.stok}</Badge> },
-    { key: 'actions' as const, header: 'Aksi', align: 'center' as const },
+    { key: 'actions' as const, header: '', align: 'center' as const },
   ];
 
   return (
-    <PageLayout
-      title="Master Barang"
-      subtitle="Kelola inventaris produk"
-      showBack
+    <PageLayout title="Master Barang" subtitle="Kelola inventaris produk"
       actions={
-        <Button onClick={() => { resetForm(); setShowForm(true); }}>
-          <Plus className="w-5 h-5" />
-          <span className="hidden sm:inline">Tambah Barang</span>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={storage.downloadBarangJSON} className="hidden sm:flex"><Download className="w-4 h-4" />Export</Button>
+          <Button size="sm" onClick={() => { resetForm(); setShowForm(true); }}><Plus className="w-4 h-4" /><span className="hidden sm:inline">Tambah</span></Button>
+        </div>
       }
     >
       {message.text && <Toast message={message.text} type={message.type as 'success' | 'error'} onClose={() => setMessage({ text: '', type: '' })} />}
@@ -106,15 +97,7 @@ export default function MasterBarangPage() {
         </form>
       </Modal>
 
-      <DataTable
-        columns={columns}
-        data={barang}
-        keyField="kode"
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        emptyMessage="Belum ada data barang"
-        footer={<p className="text-sm text-slate-500">Total: {barang.length} barang</p>}
-      />
+      <DataTable columns={columns} data={barang} keyField="kode" onEdit={handleEdit} onDelete={handleDelete} emptyMessage="Belum ada data barang" footer={<p className="text-xs lg:text-sm text-slate-500">Total: {barang.length} barang</p>} />
     </PageLayout>
   );
 }

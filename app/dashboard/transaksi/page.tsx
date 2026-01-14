@@ -8,6 +8,7 @@ import { Button, Input, Spinner } from '@/app/components';
 import { Card, Toast, Modal } from '@/app/components/molecules';
 import { PageLayout, Struk } from '@/app/components';
 import { Barang, TransaksiItem, Transaksi } from '@/app/lib/types';
+import { storage } from '@/app/lib/storage';
 
 export default function TransaksiPage() {
   const { user, isLoading } = useAuth();
@@ -26,7 +27,7 @@ export default function TransaksiPage() {
     if (!isLoading && !user) router.push('/login');
   }, [user, isLoading, router]);
 
-  useEffect(() => { fetch('/api/barang').then(res => res.json()).then(setBarang); }, []);
+  useEffect(() => { setBarang(storage.getBarang()); }, []);
 
   const subtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
   const pajakNominal = subtotal * (pajak / 100);
@@ -44,9 +45,7 @@ export default function TransaksiPage() {
     } else {
       setCart([...cart, { kode: item.kode, nama: item.nama, harga: item.harga, jumlah, subtotal: item.harga * jumlah }]);
     }
-    setKode('');
-    setJumlah(1);
-    setMessage({ text: '', type: '' });
+    setKode(''); setJumlah(1); setMessage({ text: '', type: '' });
   };
 
   const updateQty = (kode: string, newQty: number) => {
@@ -57,19 +56,15 @@ export default function TransaksiPage() {
 
   const removeFromCart = (kode: string) => setCart(cart.filter(c => c.kode !== kode));
 
-  const processTransaction = async () => {
+  const processTransaction = () => {
     if (cart.length === 0) { setMessage({ text: 'Keranjang masih kosong', type: 'error' }); return; }
-    const transaksi: Transaksi = { id_transaksi: `TRX${Date.now()}`, tanggal: new Date().toISOString(), items: cart, subtotal, pajak: pajakNominal, diskon: diskonNominal, total };
-    const res = await fetch('/api/transaksi', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(transaksi) });
-    const data = await res.json();
-    if (data.success) {
-      setStruk(transaksi);
-      setCart([]);
-      setDiskon(0);
-      fetch('/api/barang').then(res => res.json()).then(setBarang);
-    } else {
-      setMessage({ text: data.message, type: 'error' });
-    }
+    const now = Date.now();
+    const transaksi: Transaksi = { id_transaksi: `TRX${now}`, tanggal: new Date(now).toISOString(), items: cart, subtotal, pajak: pajakNominal, diskon: diskonNominal, total };
+    const list = storage.getBarang();
+    cart.forEach(item => { const b = list.find(x => x.kode === item.kode); if (b) b.stok -= item.jumlah; });
+    storage.setBarang(list);
+    storage.addTransaksi(transaksi);
+    setStruk(transaksi); setCart([]); setDiskon(0); setBarang(storage.getBarang());
   };
 
   const printStruk = () => {
@@ -88,98 +83,103 @@ export default function TransaksiPage() {
   if (isLoading || !user) return <div className="min-h-screen flex items-center justify-center"><Spinner /></div>;
 
   return (
-    <PageLayout title="Transaksi Baru" subtitle="Buat penjualan baru" showBack>
+    <PageLayout title="Transaksi Baru" subtitle="Buat penjualan baru">
       {message.text && <Toast message={message.text} type={message.type as 'success' | 'error'} onClose={() => setMessage({ text: '', type: '' })} />}
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Tambah Item</h2>
-            <div className="flex gap-4 flex-wrap">
-              <div className="flex-1 min-w-[200px]">
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Pilih Barang</label>
-                <select value={kode} onChange={(e) => setKode(e.target.value)} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+        <div className="lg:col-span-2 space-y-4 lg:space-y-6">
+          <Card className="p-4 lg:p-6">
+            <h2 className="text-base lg:text-lg font-semibold text-slate-900 mb-3 lg:mb-4">Tambah Item</h2>
+            <div className="space-y-3 lg:space-y-0 lg:flex lg:gap-4 lg:flex-wrap">
+              <div className="flex-1 lg:min-w-[200px]">
+                <label className="block text-sm font-medium text-slate-700 mb-2">Pilih Barang</label>
+                <select value={kode} onChange={(e) => setKode(e.target.value)} className="w-full px-3 lg:px-4 py-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white text-sm lg:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                   <option value="">-- Pilih Barang --</option>
-                  {barang.filter(b => b.stok > 0).map(b => <option key={b.kode} value={b.kode}>{b.nama} - Rp {b.harga.toLocaleString('id-ID')} (Stok: {b.stok})</option>)}
+                  {barang.filter(b => b.stok > 0).map(b => <option key={b.kode} value={b.kode}>{b.nama} - Rp {b.harga.toLocaleString('id-ID')} ({b.stok})</option>)}
                 </select>
               </div>
-              <div className="w-28">
-                <Input label="Jumlah" type="number" value={jumlah} onChange={(e) => setJumlah(parseInt(e.target.value) || 1)} min={1} className="text-center" />
-              </div>
-              <div className="flex items-end">
-                <Button onClick={addToCart}><Plus className="w-5 h-5" />Tambah</Button>
+              <div className="flex gap-3">
+                <div className="w-20 lg:w-28">
+                  <Input label="Jumlah" type="number" value={jumlah} onChange={(e) => setJumlah(parseInt(e.target.value) || 1)} min={1} size="sm" />
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={addToCart} size="sm"><Plus className="w-4 h-4" /><span className="hidden sm:inline">Tambah</span></Button>
+                </div>
               </div>
             </div>
           </Card>
 
           <Card padding={false}>
-            <div className="p-4 border-b border-slate-200 bg-slate-50">
-              <h2 className="font-semibold text-slate-900">Keranjang ({cart.length} item)</h2>
+            <div className="p-3 lg:p-4 border-b border-slate-200 bg-slate-50">
+              <h2 className="font-semibold text-slate-900 text-sm lg:text-base">Keranjang ({cart.length})</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Barang</th>
-                    <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Harga</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Qty</th>
-                    <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Subtotal</th>
-                    <th className="py-3 px-4"></th>
+                    <th className="text-left py-2 lg:py-3 px-3 lg:px-4 text-[10px] lg:text-xs font-semibold text-slate-500 uppercase">Barang</th>
+                    <th className="text-right py-2 lg:py-3 px-2 lg:px-4 text-[10px] lg:text-xs font-semibold text-slate-500 uppercase hidden sm:table-cell">Harga</th>
+                    <th className="text-center py-2 lg:py-3 px-2 lg:px-4 text-[10px] lg:text-xs font-semibold text-slate-500 uppercase">Qty</th>
+                    <th className="text-right py-2 lg:py-3 px-2 lg:px-4 text-[10px] lg:text-xs font-semibold text-slate-500 uppercase">Subtotal</th>
+                    <th className="py-2 lg:py-3 px-2"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {cart.map((item) => (
                     <tr key={item.kode}>
-                      <td className="py-3 px-4"><p className="font-medium text-slate-900">{item.nama}</p><p className="text-xs text-slate-500">{item.kode}</p></td>
-                      <td className="py-3 px-4 text-right text-slate-700">Rp {item.harga.toLocaleString('id-ID')}</td>
-                      <td className="py-3 px-4">
+                      <td className="py-2 lg:py-3 px-3 lg:px-4">
+                        <p className="font-medium text-slate-900 text-sm">{item.nama}</p>
+                        <p className="text-xs text-slate-500 sm:hidden">Rp {item.harga.toLocaleString('id-ID')}</p>
+                      </td>
+                      <td className="py-2 lg:py-3 px-2 lg:px-4 text-right text-slate-700 text-sm hidden sm:table-cell">Rp {item.harga.toLocaleString('id-ID')}</td>
+                      <td className="py-2 lg:py-3 px-2 lg:px-4">
                         <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => updateQty(item.kode, item.jumlah - 1)} className="w-8 h-8 rounded-lg border border-slate-300 hover:bg-slate-100 flex items-center justify-center"><Minus className="w-4 h-4" /></button>
-                          <span className="w-10 text-center font-medium">{item.jumlah}</span>
-                          <button onClick={() => updateQty(item.kode, item.jumlah + 1)} className="w-8 h-8 rounded-lg border border-slate-300 hover:bg-slate-100 flex items-center justify-center"><Plus className="w-4 h-4" /></button>
+                          <button onClick={() => updateQty(item.kode, item.jumlah - 1)} className="w-6 h-6 lg:w-8 lg:h-8 rounded border border-slate-300 hover:bg-slate-100 flex items-center justify-center"><Minus className="w-3 h-3 lg:w-4 lg:h-4" /></button>
+                          <span className="w-6 lg:w-10 text-center font-medium text-sm">{item.jumlah}</span>
+                          <button onClick={() => updateQty(item.kode, item.jumlah + 1)} className="w-6 h-6 lg:w-8 lg:h-8 rounded border border-slate-300 hover:bg-slate-100 flex items-center justify-center"><Plus className="w-3 h-3 lg:w-4 lg:h-4" /></button>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-right font-semibold text-slate-900">Rp {item.subtotal.toLocaleString('id-ID')}</td>
-                      <td className="py-3 px-4"><button onClick={() => removeFromCart(item.kode)} className="text-red-600 hover:text-red-800 p-2"><Trash2 className="w-4 h-4" /></button></td>
+                      <td className="py-2 lg:py-3 px-2 lg:px-4 text-right font-semibold text-slate-900 text-xs lg:text-sm">Rp {item.subtotal.toLocaleString('id-ID')}</td>
+                      <td className="py-2 lg:py-3 px-2"><button onClick={() => removeFromCart(item.kode)} className="text-red-600 hover:text-red-800 p-1"><Trash2 className="w-4 h-4" /></button></td>
                     </tr>
                   ))}
-                  {cart.length === 0 && <tr><td colSpan={5} className="py-12 text-center text-slate-500">Keranjang masih kosong</td></tr>}
+                  {cart.length === 0 && <tr><td colSpan={5} className="py-8 lg:py-12 text-center text-slate-500 text-sm">Keranjang kosong</td></tr>}
                 </tbody>
               </table>
             </div>
           </Card>
         </div>
 
-        <div className="space-y-6">
-          <Card className="sticky top-24">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Ringkasan Pembayaran</h2>
-            <div className="space-y-3">
+        <div>
+          <Card className="lg:sticky lg:top-24 p-4 lg:p-6">
+            <h2 className="text-base lg:text-lg font-semibold text-slate-900 mb-3 lg:mb-4">Pembayaran</h2>
+            <div className="space-y-2 lg:space-y-3 text-sm">
               <div className="flex justify-between text-slate-600"><span>Subtotal</span><span className="font-medium text-slate-900">Rp {subtotal.toLocaleString('id-ID')}</span></div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-600">Pajak (%)</span>
-                <input type="number" value={pajak} onChange={(e) => setPajak(parseFloat(e.target.value) || 0)} className="w-20 px-3 py-1.5 border border-slate-300 rounded-lg text-right text-sm" min={0} />
+                <input type="number" value={pajak} onChange={(e) => setPajak(parseFloat(e.target.value) || 0)} className="w-16 lg:w-20 px-2 py-1.5 border border-slate-300 rounded-lg text-right text-sm" min={0} />
               </div>
               <div className="flex justify-between text-slate-600"><span>Pajak</span><span>Rp {pajakNominal.toLocaleString('id-ID')}</span></div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-600">Diskon (%)</span>
-                <input type="number" value={diskon} onChange={(e) => setDiskon(parseFloat(e.target.value) || 0)} className="w-20 px-3 py-1.5 border border-slate-300 rounded-lg text-right text-sm" min={0} max={100} />
+                <input type="number" value={diskon} onChange={(e) => setDiskon(parseFloat(e.target.value) || 0)} className="w-16 lg:w-20 px-2 py-1.5 border border-slate-300 rounded-lg text-right text-sm" min={0} max={100} />
               </div>
               <div className="flex justify-between text-slate-600"><span>Diskon</span><span className="text-red-600">-Rp {diskonNominal.toLocaleString('id-ID')}</span></div>
               <div className="border-t border-slate-200 pt-3 mt-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold text-slate-900">Total</span>
-                  <span className="text-2xl font-bold text-emerald-600">Rp {total.toLocaleString('id-ID')}</span>
+                  <span className="font-semibold text-slate-900">Total</span>
+                  <span className="text-xl lg:text-2xl font-bold text-emerald-600">Rp {total.toLocaleString('id-ID')}</span>
                 </div>
               </div>
             </div>
-            <Button variant="success" onClick={processTransaction} disabled={cart.length === 0} className="w-full mt-6" size="lg">
-              <CheckCircle className="w-5 h-5" />Proses Pembayaran
+            <Button variant="success" onClick={processTransaction} disabled={cart.length === 0} className="w-full mt-4 lg:mt-6" size="lg">
+              <CheckCircle className="w-5 h-5" />Proses
             </Button>
           </Card>
         </div>
       </div>
 
-      <Modal isOpen={!!struk} onClose={() => setStruk(null)} title="Struk Pembayaran">
+      <Modal isOpen={!!struk} onClose={() => setStruk(null)} title="Struk">
         {struk && (
           <>
             <div ref={strukRef}><Struk transaksi={struk} /></div>

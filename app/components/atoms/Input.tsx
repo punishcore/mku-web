@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, forwardRef, InputHTMLAttributes, ReactElement } from 'react';
+import React, { useState, forwardRef, InputHTMLAttributes, ReactElement, cloneElement } from 'react';
 import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
@@ -9,7 +9,7 @@ interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'>
   success?: boolean;
   helperText?: string;
   size?: 'sm' | 'md' | 'lg';
-  icon?: ReactElement;
+  icon?: ReactElement<{ className?: string }>;
   iconPosition?: 'left' | 'right';
   showPasswordToggle?: boolean;
 }
@@ -89,7 +89,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
       <div className="relative">
         {icon && iconPosition === 'left' && (
           <div className={`absolute left-3 top-1/2 -translate-y-1/2 ${isFocused ? 'text-blue-600' : 'text-slate-400'}`}>
-            {React.cloneElement(icon, { className: iconSizeClasses[size] })}
+            {cloneElement(icon, { className: iconSizeClasses[size] })}
           </div>
         )}
 
@@ -125,7 +125,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
 
           {icon && iconPosition === 'right' && (
             <div className={isFocused ? 'text-blue-600' : 'text-slate-400'}>
-              {React.cloneElement(icon, { className: iconSizeClasses[size] })}
+              {cloneElement(icon, { className: iconSizeClasses[size] })}
             </div>
           )}
         </div>

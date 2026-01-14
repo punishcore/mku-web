@@ -27,7 +27,7 @@ export function DataTable<T>({ columns, data, keyField, onEdit, onDelete, emptyM
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
               {columns.map((col) => (
-                <th key={String(col.key)} className={`py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider text-${col.align || 'left'}`}>
+                <th key={String(col.key)} className={`py-3 lg:py-4 px-3 lg:px-6 text-[10px] lg:text-xs font-semibold text-slate-500 uppercase tracking-wider text-${col.align || 'left'}`}>
                   {col.header}
                 </th>
               ))}
@@ -37,17 +37,17 @@ export function DataTable<T>({ columns, data, keyField, onEdit, onDelete, emptyM
             {data.map((item) => (
               <tr key={String(item[keyField])} className="hover:bg-slate-50 transition-colors">
                 {columns.map((col) => (
-                  <td key={String(col.key)} className={`py-4 px-6 text-${col.align || 'left'}`}>
+                  <td key={String(col.key)} className={`py-3 lg:py-4 px-3 lg:px-6 text-${col.align || 'left'}`}>
                     {col.key === 'actions' ? (
-                      <div className="flex items-center justify-center gap-2">
+                      <div className="flex items-center justify-center gap-1 lg:gap-2">
                         {onEdit && (
-                          <button onClick={() => onEdit(item)} className="p-2 rounded-lg text-blue-600 hover:bg-blue-50">
-                            <Pencil className="w-4 h-4" />
+                          <button onClick={() => onEdit(item)} className="p-1.5 lg:p-2 rounded-lg text-blue-600 hover:bg-blue-50">
+                            <Pencil className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                           </button>
                         )}
                         {onDelete && (
-                          <button onClick={() => onDelete(item)} className="p-2 rounded-lg text-red-600 hover:bg-red-50">
-                            <Trash2 className="w-4 h-4" />
+                          <button onClick={() => onDelete(item)} className="p-1.5 lg:p-2 rounded-lg text-red-600 hover:bg-red-50">
+                            <Trash2 className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                           </button>
                         )}
                       </div>
@@ -62,13 +62,13 @@ export function DataTable<T>({ columns, data, keyField, onEdit, onDelete, emptyM
             ))}
             {data.length === 0 && (
               <tr>
-                <td colSpan={columns.length} className="py-12 text-center text-slate-500">{emptyMessage}</td>
+                <td colSpan={columns.length} className="py-8 lg:py-12 text-center text-slate-500 text-sm">{emptyMessage}</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-      {footer && <div className="bg-slate-50 border-t border-slate-200 px-6 py-3">{footer}</div>}
+      {footer && <div className="bg-slate-50 border-t border-slate-200 px-3 lg:px-6 py-2 lg:py-3">{footer}</div>}
     </div>
   );
 }

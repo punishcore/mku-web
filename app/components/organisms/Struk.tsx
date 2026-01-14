@@ -8,7 +8,7 @@ export function Struk({ transaksi }: StrukProps) {
   return (
     <div className="font-mono text-sm text-slate-900 bg-slate-50 p-4 rounded-lg">
       <div className="text-center mb-3">
-        <div className="font-bold text-lg">KASIR PRO</div>
+        <div className="font-bold text-lg">TOKO JAYA ABADI</div>
         <div className="text-xs text-slate-500">Point of Sale System</div>
         <div className="text-xs mt-1">{new Date(transaksi.tanggal).toLocaleString('id-ID')}</div>
         <div className="text-xs">{transaksi.id_transaksi}</div>

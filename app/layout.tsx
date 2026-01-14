@@ -7,8 +7,8 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Kasir App",
-  description: "Aplikasi Kasir",
+  title: "Toko Jaya Abadi",
+  description: "Point of Sale System",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

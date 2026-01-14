@@ -4,11 +4,23 @@ interface PageLayoutProps {
   title?: string;
   subtitle?: string;
   showBack?: boolean;
-  backHref?: string;
   actions?: ReactNode;
   children: ReactNode;
 }
 
-export function PageLayout({ children }: PageLayoutProps) {
-  return <div>{children}</div>;
+export function PageLayout({ title, subtitle, actions, children }: PageLayoutProps) {
+  return (
+    <div>
+      {(title || actions) && (
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            {title && <h1 className="text-2xl font-bold text-slate-900">{title}</h1>}
+            {subtitle && <p className="text-slate-500 mt-1">{subtitle}</p>}
+          </div>
+          {actions && <div>{actions}</div>}
+        </div>
+      )}
+      {children}
+    </div>
+  );
 }
