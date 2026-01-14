@@ -1,0 +1,24 @@
+Fitur Wajib (minimal)
+1. Master Barang
+o Tambah barang (kode, nama, harga, stok)
+o Lihat daftar barang
+o Update stok/harga
+2. Transaksi Penjualan
+o Input item (kode barang + jumlah)
+o Hitung subtotal, total, pajak/diskon sederhana (opsional)
+o Kurangi stok otomatis
+3. Struk & Riwayat
+o Cetak struk ke layar
+o Simpan riwayat transaksi ke file teks (write)
+o Baca riwayat transaksi dari file (read)
+4. Pencarian & Ringkasan
+o Cari barang berdasarkan kode/nama (string)
+o Rekap total transaksi (mis. total pendapatan harian sederhana)
+Ketentuan Teknis (wajib ada di kode)
+• Struktur kontrol: if-else + loop (for/while/do-while)
+• Array: minimal array 1D untuk daftar barang; bonus jika pakai array 2D/matriks untuk
+laporan
+• Fungsi: minimal 5 fungsi (mis. tambahBarang(), tampilBarang(), transaksi(),
+simpanFile(), bacaFile())
+• String: validasi input sederhana (panjang kode/nama, pencarian)
+• Debugging & uji: minimal 8 test-case + catatan perbaikan bug

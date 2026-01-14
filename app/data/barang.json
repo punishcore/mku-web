@@ -1,0 +1,20 @@
+[
+  {
+    "kode": "BRG002",
+    "nama": "Kopi Sachet",
+    "harga": 1500.0,
+    "stok": 177
+  },
+  {
+    "kode": ",SNM,",
+    "nama": "saya",
+    "harga": 30000.0,
+    "stok": 930
+  },
+  {
+    "kode": "BR003",
+    "nama": "susu",
+    "harga": 25000.0,
+    "stok": 30
+  }
+]
